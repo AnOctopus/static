@@ -173,22 +173,16 @@
   (io/write-out-dir "tags/index.html"
                     (template
                      [{:title "Tags" :template (:default-template (config/config))}
-                      (let [template-path (str (:in-dir (config/config))
-                                               "templates/"
-                                               (:tags-template (config/config)))]
-                        (hiccup/html (if (.isFile (File. template-path))
-                                       @(second (io/read-doc template-path))
-                                       [:div
-                                        [:h2 "Tags"]
-                                        (map
-                                         (fn[t]
-                                           (let [[tag posts] t]
-                                             [:h4
-                                              [:a {:name tag} tag]
-                                              [:ul (map #(let [[url title] %]
-                                                           [:li [:a {:href url} title]])
-                                                        posts)]]))
-                                         (tag-map))])))])))
+                      (hiccup/html
+                       [:h2 "Tags"]
+                       (map (fn[t]
+                              (let [[tag posts] t]
+                                [:h4 [:a {:name tag} tag]
+                                 [:ul
+                                  (map #(let [[url title] %]
+                                          [:li [:a {:href url} title]])
+                                       posts)]]))
+                            (tag-map)))])))
 
 ;;
 ;; Create pages for latest posts.
@@ -365,16 +359,14 @@
 
     (when (:blog-as-index (config/config))
       (log-time-elapsed "Creating Latest Posts " (create-latest-posts))
-      (let [out-dir (:out-dir (config/config))
-            latest-posts-path (str out-dir "latest-posts/")]
-        (if-let [dir (.list (File. latest-posts-path))]
-          (let [max (apply max (map read-string dir))]
-            (FileUtils/copyFile
-             (File. (str latest-posts-path max "/index.html"))
-             (File. (str out-dir "index.html"))))
-          (log/warn (str  "\"" latest-posts-path "\""
-                          " is not a valid directory."
-                          " Ensure :out-dir ends with a trailing slash.")))))))
+      (let [max (apply max (map read-string (-> (:out-dir (config/config))
+                                                (str  "latest-posts/")
+                                                (File.)
+                                                .list)))]
+        (FileUtils/copyFile
+         (File. (str (:out-dir (config/config))
+                     "latest-posts/" max "/index.html"))
+         (File. (str (:out-dir (config/config)) "index.html")))))))
 
 (defn serve-static [req]
   (let [mime-types {".clj" "text/plain"
